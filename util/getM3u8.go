@@ -1,6 +1,9 @@
 package util
 
 import (
+	"bufio"
+	"log"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -21,4 +24,16 @@ func GetM3u8(text string) string {
 	}
 	sb.WriteString("]")
 	return sb.String()
+}
+
+func OpenFile() {
+	file, err := os.OpenFile("./log.txt", os.O_RDWR|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(file)
+	write := bufio.NewWriter(file)
+	write.WriteString("lllll\n")
+	write.Flush()
+	file.Close()
 }

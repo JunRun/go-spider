@@ -6,9 +6,9 @@ import (
 	"github.com/antchfx/htmlquery"
 	"golang.org/x/net/html"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -38,28 +38,48 @@ func HttpFetch(webUrl string) (string, error) {
 }
 
 //获取xpath
-func HttpFetchDoc(webUrl string) *html.Node {
-	client := &http.Client{}
+func HttpFetchDoc(webUrl string) (*html.Node, error) {
+
+	proxy := func(_ *http.Request) (*url.URL, error) {
+		return url.Parse("http://127.0.0.1:8001")
+	}
+	client := &http.Client{Transport: &http.Transport{Proxy: proxy}}
 	req, _ := http.NewRequest("GET", webUrl, nil)
 	req.Header.Set("User-Agent", RandomAgent())
+	//在解决问题之前需要了解关于go是如何实现connection的一些背景小知识：有两个协程，一个用于读，一个用于写
+	// （就是readLoop和writeLoop）。在大多数情况下，readLoop会检测socket是否关闭，并适时关闭connection。
+	// 如果一个新请求在readLoop检测到关闭之前就到来了，那么就会产生EOF错误并中断执行，而不是去关闭前一个请求
+	// 。这里也是如此，我执行时建立一个新的连接，这段程序执行完成后退出，再次打开执行时服务器并不知道我已经关闭了连接，
+	// 所以提示连接被重置；如果我不退出程序而使用for循环多次发送时，旧连接未关闭，新连接却到来，会报EOF。
+	req.Close = true
+	count := 0
+k:
 	resp, err := client.Do(req)
+	if err != nil {
+		if count < 3 {
+			fmt.Println("bad request .restart send ")
+			count++
+			goto k
+		} else {
+			count = 0
+			fmt.Println("request failed: url ---", webUrl)
+			return nil, err
+		}
+	}
 	//buff :=new(bytes.Buffer)
 	//buff.ReadFrom(resp.Body)
 	//s:=buff.String()
 	//fmt.Println(s)
-	if err != nil {
-		fmt.Println("请求错误")
-		panic(err)
-		return nil
-	}
 	if resp != nil {
 		defer resp.Body.Close()
 	}
+
 	body, err := htmlquery.Parse(resp.Body)
 	if err != nil {
-		log.Fatalln("解析错误--")
+		fmt.Println("解析错误--")
+		return nil, err
 	}
-	return body
+	return body, nil
 }
 
 //random get User-agents

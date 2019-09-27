@@ -22,7 +22,11 @@ var (
 )
 
 func VideoUrlSpider(url string) {
-	html := util.HttpFetchDoc(url)
+	html, err := util.HttpFetchDoc(url)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	//获取连接
 	nodes := htmlquery.Find(html, "//li/div/a")
 	for _, node := range nodes {
@@ -47,8 +51,13 @@ func VideoUrlSpider(url string) {
 
 // 获取动漫信息
 func VideoInfoSpider(url string) modle.Video {
-	htmlContent := util.HttpFetchDoc(url)
+	htmlContent, err := util.HttpFetchDoc(url)
 	video := modle.Video{}
+	if err != nil {
+		fmt.Println(err)
+		return video
+	}
+
 	//获取动漫视频 图片信息
 	if image := htmlquery.FindOne(htmlContent, "//*[@id='sidebar_elements']/li[1]/img/@src"); image != nil {
 		video.Img = image.FirstChild.Data
@@ -86,7 +95,9 @@ func VideoInfoSpider(url string) modle.Video {
 		}
 		pool <- 1
 		go func(es *html.Node) {
-
+			defer func() {
+				<-pool
+			}()
 			episodeUrl := htmlquery.FindOne(es, "./@href").FirstChild.Data
 			title := htmlquery.FindOne(es, "./img/@alt").FirstChild.Data
 			img := ""
@@ -109,7 +120,11 @@ func VideoInfoSpider(url string) modle.Video {
 }
 
 func EpisodeInfo(url string, title string, img string, episodeNumber string, videoId string) {
-	html := util.HttpFetchDoc(url)
+	html, err := util.HttpFetchDoc(url)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	episode := modle.Episode{}
 	episode.Vid = videoId
 	episode.EpisodeNumber = util.ReplaceNumber(episodeNumber)
@@ -153,12 +168,11 @@ func EpisodeInfo(url string, title string, img string, episodeNumber string, vid
 		fmt.Println("插入失败==== ", episode.EpisodeName)
 	}
 	fmt.Println("插入成功=== ", episode.EpisodeName)
-	<-pool
 	return
 }
 
 func Run() {
-	page := 3
+	page := 0
 	for {
 		if page > 30 {
 			break
@@ -190,7 +204,10 @@ func UpdateM3u8Task() {
 }
 
 func UpdateM3u8(episode modle.Episode) {
-	html := util.HttpFetchDoc(episode.UrlPath)
+	html, err := util.HttpFetchDoc(episode.UrlPath)
+	if err != nil {
+		fmt.Println(err)
+	}
 	if content := htmlquery.FindOne(html, "//*[@id='showmedia_video_box']/script[3]/text()"); content != nil {
 		episode.Content = util.GetM3u8(content.Data)
 	}

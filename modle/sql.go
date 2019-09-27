@@ -24,6 +24,8 @@ var (
 func GetConnect() *gorm.DB {
 	if GDB == nil {
 		DB, err := gorm.Open("postgres", config)
+		DB.DB().SetMaxOpenConns(10)
+		DB.DB().SetMaxIdleConns(5)
 		if err != nil {
 			panic(err)
 		}

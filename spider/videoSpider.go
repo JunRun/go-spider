@@ -200,7 +200,6 @@ func UpdateM3u8Task() {
 		}(node)
 	}
 	close(updatePool)
-
 }
 
 func UpdateM3u8(episode modle.Episode) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"sync"
 )
 
 type sqlDB struct {
@@ -11,25 +12,24 @@ type sqlDB struct {
 
 const (
 	host     = "127.0.0.1"
-	user     = "postgres"
-	dbname   = "anime"
+	user     = "mysql"
+	dbname   = "shows"
 	password = "123456"
+	port     = 3306
 )
 
 var (
-	GDB    *gorm.DB
-	config = fmt.Sprintf("host=%s user=%s dbname=%s sslmode=disable password=%s", host, user, dbname, password)
+	err    error
+	gDB    *gorm.DB
+	config = fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8&parseTime=True&loc=Local", user, password, host, port, dbname)
+	single = sync.Once{}
 )
 
 func GetConnect() *gorm.DB {
-	if GDB == nil {
-		DB, err := gorm.Open("postgres", config)
-		DB.DB().SetMaxOpenConns(10)
-		DB.DB().SetMaxIdleConns(5)
-		if err != nil {
+	single.Do(func() {
+		if gDB, err = gorm.Open("mysql", config); err != nil {
 			panic(err)
 		}
-		GDB = DB
-	}
-	return GDB
+	})
+	return gDB
 }

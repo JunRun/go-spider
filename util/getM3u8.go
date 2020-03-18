@@ -13,6 +13,7 @@ type M3u8 struct {
 	url         string `json:"url"`
 }
 
+//正则匹配 寻找.m3u8链接
 func GetM3u8(text string) string {
 	r := regexp.MustCompile(`\{"format":([\w\W]*?)\.m3u8([\w\W]*?)\}`)
 	machs := r.FindAllString(text, -1)
